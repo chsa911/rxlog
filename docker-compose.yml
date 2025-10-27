@@ -1,0 +1,103 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: rxlog
+      POSTGRES_USER: rxlog
+      POSTGRES_PASSWORD: rxlog
+    ports: ["5432:5432"]
+    volumes: [ "pg_data:/var/lib/postgresql/data" ]
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  gateway-java-spring:
+    build:
+      context: ./gateway-java-spring
+      platforms: ["linux/amd64"]
+    ports: ["8080:8080"]
+    environment:
+      - SERVER_PORT=8080
+      - REGISTER_URL=http://register-java-spring:8086
+      - BARCODES_URL=http://barcodes-go:8082
+      - MOBILE_URL=http://mobile-kotlin-spring:8087
+      - AUTOCOMPLETE_URL=http://autocomplete-go:8083
+      - ANALYTICS_URL=http://analytics-go:8084
+    depends_on:
+      - register-java-spring
+      - barcodes-go
+      - mobile-kotlin-spring
+      - autocomplete-go
+      - analytics-go
+
+  register-java-spring:
+    build:
+      context: ./services/register-java-spring
+      platforms: ["linux/amd64"]
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rxlog
+      - SPRING_DATASOURCE_USERNAME=rxlog
+      - SPRING_DATASOURCE_PASSWORD=rxlog
+      - SERVER_PORT=8086
+      - barcode.service.base=http://barcodes-go:8082
+    depends_on: [postgres]
+
+  barcodes-go:
+    build:
+      context: ./services/barcodes-go
+      platforms: ["linux/amd64"]
+    environment:
+      - DATABASE_URL=postgres://rxlog:rxlog@postgres:5432/rxlog?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - SERVICE_PORT=8082
+    depends_on: [postgres, redis]
+
+  mobile-kotlin-spring:
+    build:
+      context: ./services/mobile-kotlin-spring
+      platforms: ["linux/amd64"]
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rxlog
+      - SPRING_DATASOURCE_USERNAME=rxlog
+      - SPRING_DATASOURCE_PASSWORD=rxlog
+      - SERVER_PORT=8087
+    depends_on: [postgres]
+
+  autocomplete-go:
+    build:
+      context: ./services/autocomplete-go
+      platforms: ["linux/amd64"]
+    environment:
+      - REDIS_ADDR=redis:6379
+      - SERVICE_PORT=8083
+    depends_on: [redis]
+
+  analytics-go:
+    build:
+      context: ./services/analytics-go
+      platforms: ["linux/amd64"]
+    environment:
+      - DATABASE_URL=postgres://rxlog:rxlog@postgres:5432/rxlog?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - SERVICE_PORT=8084
+    depends_on: [postgres, redis]
+
+  research-go:
+    build:
+      context: ./services/research-go
+      platforms: ["linux/amd64"]
+    environment:
+      - DATABASE_URL=postgres://rxlog:rxlog@postgres:5432/rxlog?sslmode=disable
+      - SERVICE_PORT=8090
+    depends_on: [postgres]
+
+  frontend-react:
+    build:
+      context: ./frontend-react
+      platforms: ["linux/amd64"]
+    ports: ["3000:80"]
+    depends_on: [gateway-java-spring]
+
+volumes:
+  pg_data:

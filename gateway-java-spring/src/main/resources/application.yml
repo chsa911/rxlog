@@ -1,0 +1,33 @@
+server:
+  port: ${SERVER_PORT:8080}
+spring:
+  main:
+    web-application-type: reactive
+  cloud:
+    gateway:
+      routes:
+        - id: register
+          uri: ${REGISTER_URL:http://register-java-spring:8086}
+          predicates: [ Path=/api/register/** ]
+          filters: [ StripPrefix=1 ]
+        - id: barcodes
+          uri: ${BARCODES_URL:http://barcodes-go:8082}
+          predicates: [ Path=/api/barcodes/** ]
+          filters: [ StripPrefix=1 ]
+        - id: mobile
+          uri: ${MOBILE_URL:http://mobile-kotlin-spring:8087}
+          predicates: [ Path=/api/mobile/** ]
+          filters: [ StripPrefix=1 ]
+        - id: autocomplete
+          uri: ${AUTOCOMPLETE_URL:http://autocomplete-go:8083}
+          predicates: [ Path=/api/autocomplete/** ]
+          filters: [ StripPrefix=1 ]
+        - id: analytics
+          uri: ${ANALYTICS_URL:http://analytics-go:8084}
+          predicates: [ Path=/api/analytics/** ]
+          filters: [ StripPrefix=1 ]
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

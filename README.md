@@ -1,5 +1,14 @@
-# RxLog — Employer-Friendly Microservices (v5)
+# RxLog V5 
 
+An App for my special mobile reading and storing workflow. Basically i remove covers and pages to store them in my trousers pockets to always be able to read in any place.
+To identify the remaining pages and to facilitate storage i have developed a barcode system 
+which i apply with textmarker and ballpoint pencil on the down, left or upper side of a book. 
+In three areas on the left middle and right i apply up to five lines which generates
+a unique code. The colour of the lines depends on the width of the book.
+The position down left or up is determined by the height of the book. 
+
+The app provides a frontend and services to automatically provide unique barcodes.
+ 
 **Services:** Gateway (Java), Register (Java + Flyway), Barcode (Go + pgx + Redis), Mobile (Kotlin),
 Autocomplete (Go + Redis), Analytics (Go + pgx + Redis), Research (Go worker).  
 **Infra:** PostgreSQL 16, Redis 7. **Frontend:** React (Vite) + Nginx.

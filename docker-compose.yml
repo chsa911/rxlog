@@ -15,7 +15,6 @@ services:
   gateway-java-spring:
     build:
       context: ./gateway-java-spring
-      platforms: ["linux/amd64"]
     ports: ["8080:8080"]
     environment:
       - SERVER_PORT=8080
@@ -24,17 +23,19 @@ services:
       - MOBILE_URL=http://mobile-kotlin-spring:8087
       - AUTOCOMPLETE_URL=http://autocomplete-go:8083
       - ANALYTICS_URL=http://analytics-go:8084
+      # optional if your gateway route uses ${COVERS_URL}
+      - COVERS_URL=http://cover-cpp:8088
     depends_on:
       - register-java-spring
       - barcodes-go
       - mobile-kotlin-spring
       - autocomplete-go
       - analytics-go
+      - cover-cpp
 
   register-java-spring:
     build:
       context: ./services/register-java-spring
-      platforms: ["linux/amd64"]
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rxlog
       - SPRING_DATASOURCE_USERNAME=rxlog
@@ -46,7 +47,6 @@ services:
   barcodes-go:
     build:
       context: ./services/barcodes-go
-      platforms: ["linux/amd64"]
     environment:
       - DATABASE_URL=postgres://rxlog:rxlog@postgres:5432/rxlog?sslmode=disable
       - REDIS_ADDR=redis:6379
@@ -56,7 +56,6 @@ services:
   mobile-kotlin-spring:
     build:
       context: ./services/mobile-kotlin-spring
-      platforms: ["linux/amd64"]
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rxlog
       - SPRING_DATASOURCE_USERNAME=rxlog
@@ -67,7 +66,6 @@ services:
   autocomplete-go:
     build:
       context: ./services/autocomplete-go
-      platforms: ["linux/amd64"]
     environment:
       - REDIS_ADDR=redis:6379
       - SERVICE_PORT=8083
@@ -76,7 +74,6 @@ services:
   analytics-go:
     build:
       context: ./services/analytics-go
-      platforms: ["linux/amd64"]
     environment:
       - DATABASE_URL=postgres://rxlog:rxlog@postgres:5432/rxlog?sslmode=disable
       - REDIS_ADDR=redis:6379
@@ -86,7 +83,6 @@ services:
   research-go:
     build:
       context: ./services/research-go
-      platforms: ["linux/amd64"]
     environment:
       - DATABASE_URL=postgres://rxlog:rxlog@postgres:5432/rxlog?sslmode=disable
       - SERVICE_PORT=8090
@@ -95,9 +91,29 @@ services:
   frontend-react:
     build:
       context: ./frontend-react
-      platforms: ["linux/amd64"]
     ports: ["3000:80"]
     depends_on: [gateway-java-spring]
 
+  # --- Cover service (local storage, no MinIO) ---
+  postgres-cover:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: cover
+      POSTGRES_USER: cover
+      POSTGRES_PASSWORD: cover
+    ports: ["5433:5432"]        # optional for local psql
+    volumes: ["pg_cover:/var/lib/postgresql/data"]
+
+  cover-cpp:
+    build: ./services/cover-cpp
+    environment:
+      PG_COVER_DSN: postgresql://cover:cover@postgres-cover:5432/cover
+      UPLOAD_ROOT: /data/uploads
+    depends_on: [postgres-cover]
+    ports: ["8088:8088"]
+    volumes:
+      - ./data:/data            # persist uploads locally
+
 volumes:
   pg_data:
+  pg_cover:

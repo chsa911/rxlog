@@ -3,5 +3,6 @@ package com.rxlog.register.api;
 public record RegisterBookResponse(
         String bookId,
         String status,
-        String barcodeStatus
+        String readingStatus,
+        String barcode
 ) {}

@@ -1,12 +1,21 @@
-FROM golang:1.22 as build
-WORKDIR /app
+# ---------- Build stage ----------
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+
+# Copy mod files first (better cache)
 COPY go.mod go.sum ./
 RUN go mod download
+
+# Copy source, tidy deps, build current module
 COPY . .
-RUN go mod tidy
-ENV CGO_ENABLED=0
-RUN go build -o /svc
-FROM gcr.io/distroless/base-debian12
-COPY --from=build /svc /svc
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod tidy && \
+    CGO_ENABLED=0 GOOS=linux go build -o /out/svc .
+
+# ---------- Runtime stage ----------
+FROM gcr.io/distroless/static-debian12
+USER 65532:65532
+COPY --from=build /out/svc /svc
 EXPOSE 8082
 ENTRYPOINT ["/svc"]

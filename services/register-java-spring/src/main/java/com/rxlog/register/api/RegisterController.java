@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/register") // Gateway strips /api → /register/...
+@RequestMapping("/register")
 public class RegisterController {
 
     private final RegisterService service;
@@ -14,8 +14,8 @@ public class RegisterController {
         this.service = service;
     }
 
-    // Create/submit a book (expects the DTO you already use)
-    @PostMapping("/book")
+    // Create/submit a book
+    // @PostMapping("/book")
     public ResponseEntity<?> registerBook(@RequestBody RegisterBookRequest req) {
         var res = service.register(req); // returns RegisterBookResponse
         return ResponseEntity.ok(res);

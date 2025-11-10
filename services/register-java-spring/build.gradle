@@ -1,7 +1,7 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.3.3'
-    id 'io.spring.dependency-management' version '1.1.5'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
     id 'com.diffplug.spotless' version '6.25.0'
 }
 
@@ -23,20 +23,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
-    // (optional but handy) expose /actuator/health, /actuator/info
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-    // Flyway (PG 16.10 support)
     implementation 'org.flywaydb:flyway-core:10.19.0'
     implementation 'org.flywaydb:flyway-database-postgresql:10.19.0'
 
     runtimeOnly 'org.postgresql:postgresql'
 
-    // Lombok
     compileOnly         'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
 
-    // --- tests ---
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.testcontainers:junit-jupiter:1.19.7'
     testImplementation 'org.testcontainers:postgresql:1.19.7'
@@ -47,7 +43,6 @@ tasks.test {
     useJUnitPlatform()
 }
 
-// ---- formatting: Google Java Style via Spotless ----
 spotless {
     java {
         googleJavaFormat()
@@ -55,5 +50,4 @@ spotless {
     }
 }
 
-// fail CI if formatting is off
 tasks.named('check').configure { dependsOn 'spotlessCheck' }

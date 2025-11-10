@@ -25,9 +25,8 @@ func jsonOK(w http.ResponseWriter, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// e=down, l=left, o=up (no "right")
+// e=down, l=left, o=up
 func positionFromHeight(h int) string {
-	// tune thresholds if you like; demo mapping:
 	if h <= 200 {
 		return "down" // egk
 	}

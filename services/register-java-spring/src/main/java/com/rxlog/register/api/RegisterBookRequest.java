@@ -27,7 +27,7 @@ public record RegisterBookRequest(
         @NotBlank String readingStatus,         // "in_progress" | "finished" | "abandoned"
         Boolean topBook,
 
-        // NEW: book dimensions (mm)
+        // book dimensions (mm)
         @NotNull @Min(1) Integer width,
         @NotNull @Min(1) Integer height
 ) {}

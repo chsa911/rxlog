@@ -80,17 +80,17 @@ curl -X POST http://localhost:8080/api/register/book -H 'content-type: applicati
 ```
 ### D) Feature status (helps employers know what’s testable)
 ```markdown
-## Feature status
-| Area            | Status | Notes / How to verify                                       |
-|-----------------|:-----:|--------------------------------------------------------------|
-| Barcode reserve |  ✅/⏳ | Reserve+free a code via UI or API                            |
-| Register book   |   ✅   | POST /api/register/book                                      |
-| Research year   |  ✅/⏳ | Background fetch; can be stubbed offline                     |
-| Autocomplete    |  ✅/⏳ | GET /api/autocomplete?field=author&q=gaim                    |
-| Mobile status   |  ✅/⏳ | Update reading → finished/abandoned                          |
-| Analytics       |  ✅/⏳ | GET /api/analytics/top-authors?limit=10                      |
+### Project status
+| Service       | Runs with compose | Health status          | API in README | Tests | Notes |
+|---------------|-------------------|------------------------|---------------|-------|-------|
+| Gateway       | ✅ core            | `UP`                   | ✅            | ✅    | Routes & health |
+| Register      | ✅ core            | `UP`                   | ✅            | ✅    | Flyway migrations |
+| Barcode       | ⏳ extras          | `NOT_IMPLEMENTED` (501)| 🔶 stub only  | ⏳    | Allocation rules WIP |
+| Autocomplete  | ⏳ extras          | `NOT_IMPLEMENTED` (501)| 🔶 stub only  | ⏳    | Prefix search WIP |
+| Analytics     | ⏳ extras          | `NOT_IMPLEMENTED` (501)| 🔶 stub only  | ⏳    | Top authors WIP |
+| Research      | ⏳ extras          | `OUT_OF_SERVICE` (503) | ❌            | ⏳    | Worker planned |
 
-Legend: ✅ implemented · ⏳ in progress · ⚠️ partial
+Legend: ✅ implemented · 🔶 stubbed · ⏳ in progress · ❌ not started
 
 
 ## 3-minute demo

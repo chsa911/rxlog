@@ -11,7 +11,7 @@ spring:
           predicates: [ Path=/api/register/** ]
           filters: [ StripPrefix=1 ]
         - id: barcodes
-          uri: ${BARCODES_URL:http://barcodes-go:8082}
+          uri: ${BARCODES_URL:http://barcodes-go:8081}
           predicates: [ Path=/api/barcodes/** ]
           filters: [ StripPrefix=1 ]
         - id: mobile

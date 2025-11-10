@@ -2,11 +2,9 @@
 FROM golang:1.22-alpine AS build
 WORKDIR /src
 
-# Copy mod files first (better cache)
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source, tidy deps, build current module
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \

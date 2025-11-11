@@ -23,7 +23,6 @@ services:
       - MOBILE_URL=http://mobile-kotlin-spring:8087
       - AUTOCOMPLETE_URL=http://autocomplete-go:8083
       - ANALYTICS_URL=http://analytics-go:8084
-      # optional if your gateway route uses ${COVERS_URL}
       - COVERS_URL=http://cover-cpp:8088
     depends_on:
       - register-java-spring

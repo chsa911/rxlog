@@ -1,9 +1,13 @@
 package com.rxlog.register.api;
 
-import jakarta.validation.constraints.NotBlank;
-
+/**
+ * DTO for updating reading status.
+ * - bookId: UUID string of the book
+ * - status: "in_progress" | "finished" | "abandoned"
+ * - topBook: optional, true/false
+ */
 public record ReadingStatusRequest(
-        @NotBlank String bookId,
-        @NotBlank String status,   // "in_progress" | "finished" | "abandoned"
-        Boolean topBook            // optional toggle
+        String bookId,
+        String status,
+        Boolean topBook
 ) {}

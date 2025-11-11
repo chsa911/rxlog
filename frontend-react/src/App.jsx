@@ -7,33 +7,38 @@ export default function App() {
   const [author, setAuthor] = useState('');
   const [publisher, setPublisher] = useState('');
   const [pages, setPages] = useState('');
-  const [kw1, setKw1] = useState('');
-  const [kw1Pos, setKw1Pos] = useState('');
-  const [kw2, setKw2] = useState(''); const [kw2Pos] = useState('');
-  const [kw3, setKw3] = useState(''); const [kw3Pos] = useState('');
+
+  // match backend naming
+  const [titleKeyword, setTitleKeyword] = useState('');
+  const [titleKeywordPosition, setTitleKeywordPosition] = useState('');
+  const [titleKeyword2, setTitleKeyword2] = useState('');
+  const [titleKeyword2Position, setTitleKeyword2Position] = useState('');
+  const [titleKeyword3, setTitleKeyword3] = useState('');
+  const [titleKeyword3Position, setTitleKeyword3Position] = useState('');
 
   // dimensions (raw + normalized)
-  const [widthRaw, setWidthRaw] = useState('');
+  const [widthRaw, setWidthRaw]   = useState('');
   const [heightRaw, setHeightRaw] = useState('');
-  const [widthMM, setWidthMM] = useState(null);
-  const [heightMM, setHeightMM] = useState(null);
+  const [widthMM, setWidthMM]     = useState(null);
+  const [heightMM, setHeightMM]   = useState(null);
 
   // derived cm
   const widthCm  = widthMM  != null ? (widthMM  / 10) : null;
   const heightCm = heightMM != null ? (heightMM / 10) : null;
 
   // barcode & status
-  const [barcode, setBarcode] = useState('');
-  const [color, setColor] = useState('');
-  const [position, setPosition] = useState('');
+  const [barcode, setBarcode]     = useState('');
+  const [color, setColor]         = useState('');
+  const [position, setPosition]   = useState('');
   const [readingStatus, setReadingStatus] = useState('in_progress');
-  const [topBook, setTopBook] = useState(false);
+  const [topBook, setTopBook]     = useState(false);
 
   const [log, setLog] = useState([]);
 
   function handleWidthBlur()  { setWidthMM(parseDimensionToMM(widthRaw)); }
   function handleHeightBlur() { setHeightMM(parseDimensionToMM(heightRaw)); }
 
+  // release helper
   async function releaseCurrentBarcode(reason = '') {
     if (!barcode) return;
     try {
@@ -47,6 +52,7 @@ export default function App() {
     setBarcode(''); setColor(''); setPosition('');
   }
 
+  // auto-assign on valid dimensions
   useEffect(() => {
     let cancelled = false;
 
@@ -59,6 +65,7 @@ export default function App() {
       if (barcode) await releaseCurrentBarcode('Dimensionen geändert');
 
       const payload = {
+        // send BOTH so old/new backends work
         width:    widthMM,
         height:   heightMM,
         widthCm:  widthCm,
@@ -80,7 +87,7 @@ export default function App() {
             const err = await res.json();
             if (err?.type === 'NO_RULE_APPLIES') msg = 'Kein Größen-Regel passt zu den eingegebenen Maßen.';
             if (err?.type === 'NO_STOCK')        msg = 'Kein Barcode verfügbar für die ermittelte Kombination.';
-            if (err?.type === 'DB_UNAVAILABLE')   msg = 'Barcode-Service/DB derzeit nicht erreichbar.';
+            if (err?.type === 'DB_UNAVAILABLE')  msg = 'Barcode-Service/DB derzeit nicht erreichbar.';
           } catch {}
           setBarcode(''); setColor(''); setPosition('');
           setLog(l => [msg, ...l]);
@@ -120,18 +127,24 @@ export default function App() {
     }
 
     const payload = {
-      author, publisher,
+      author,
+      publisher,
       pages: pages ? Number(pages) : null,
-      titleKeyword: kw1 || null,
-      titleKeywordPosition: kw1Pos ? Number(kw1Pos) : null,
-      titleKeyword2: null,
-      titleKeyword2Position: null,
-      titleKeyword3: null,
-      titleKeyword3Position: null,
+
+      // match backend DTO exactly
+      titleKeyword:              titleKeyword      || null,
+      titleKeywordPosition:      titleKeywordPosition ? Number(titleKeywordPosition) : null,
+      titleKeyword2:             titleKeyword2     || null,
+      titleKeyword2Position:     titleKeyword2Position ? Number(titleKeyword2Position) : null,
+      titleKeyword3:             titleKeyword3     || null,
+      titleKeyword3Position:     titleKeyword3Position ? Number(titleKeyword3Position) : null,
+
       barcode,
       readingStatus,
       topBook,
-      width:  widthMM,   // mm for register service
+
+      // mm for register service
+      width:  widthMM,
       height: heightMM
     };
 
@@ -158,7 +171,9 @@ export default function App() {
 
   function resetForm() {
     setAuthor(''); setPublisher(''); setPages('');
-    setKw1(''); setKw1Pos(''); setKw2(''); setKw3('');
+    setTitleKeyword(''); setTitleKeywordPosition('');
+    setTitleKeyword2(''); setTitleKeyword2Position('');
+    setTitleKeyword3(''); setTitleKeyword3Position('');
     setWidthRaw(''); setHeightRaw(''); setWidthMM(null); setHeightMM(null);
     setBarcode(''); setColor(''); setPosition('');
     setReadingStatus('in_progress'); setTopBook(false);
@@ -168,12 +183,40 @@ export default function App() {
     <div style={{fontFamily:'system-ui, sans-serif', padding:'2rem', maxWidth:900, margin:'0 auto'}}>
       <h1>RxLog – Buch registrieren</h1>
 
-      <form onSubmit={onSubmit} className="grid" style={{gap: '0.75rem', maxWidth: 600}}>
+      <form onSubmit={onSubmit} className="grid" style={{gap: '0.75rem', maxWidth: 720}}>
         <label>Autor
           <input required value={author} onChange={e=>setAuthor(e.target.value)} placeholder="z. B. T. Fontane" />
         </label>
+
         <label>Verlag
           <input required value={publisher} onChange={e=>setPublisher(e.target.value)} placeholder="z. B. Suhrkamp" />
+        </label>
+
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}>
+          <label>Schlagwort 1
+            <input required value={titleKeyword} onChange={e=>setTitleKeyword(e.target.value)} />
+          </label>
+          <label>Position 1
+            <input required type="number" min={1} value={titleKeywordPosition ?? ''} onChange={e=>setTitleKeywordPosition(e.target.value)} />
+          </label>
+
+          <label>Schlagwort 2
+            <input value={titleKeyword2} onChange={e=>setTitleKeyword2(e.target.value)} />
+          </label>
+          <label>Position 2
+            <input type="number" min={1} value={titleKeyword2Position ?? ''} onChange={e=>setTitleKeyword2Position(e.target.value)} />
+          </label>
+
+          <label>Schlagwort 3
+            <input value={titleKeyword3} onChange={e=>setTitleKeyword3(e.target.value)} />
+          </label>
+          <label>Position 3
+            <input type="number" min={1} value={titleKeyword3Position ?? ''} onChange={e=>setTitleKeyword3Position(e.target.value)} />
+          </label>
+        </div>
+
+        <label>Seitenzahl
+          <input required type="number" min={1} value={pages} onChange={e=>setPages(e.target.value)} />
         </label>
 
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}>

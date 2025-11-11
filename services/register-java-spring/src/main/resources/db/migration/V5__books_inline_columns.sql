@@ -1,5 +1,4 @@
 -- V5__books_inline_columns.sql
--- Align books table with current JPA entity (inline author/publisher + extra fields)
 -- NOTE: this version is TEXT-friendly (books.id is TEXT from Mongo). It also repairs
 -- any pre-existing book_barcodes table that used UUID by mistake.
 
@@ -29,19 +28,13 @@ ALTER TABLE books
   ADD COLUMN IF NOT EXISTS top_book                    BOOLEAN NOT NULL DEFAULT FALSE,
   ADD COLUMN IF NOT EXISTS reading_status_updated_at   TIMESTAMPTZ;
 
--- If you used old foreign keys, keep them or drop them explicitly if no longer used:
--- ALTER TABLE books DROP COLUMN IF EXISTS author_id;
--- ALTER TABLE books DROP COLUMN IF EXISTS publisher_id;
 
--- Optional: a helper table for barcodes (normalized)
--- Create with TEXT FK to books(id) (your books.id is TEXT), and repair if a UUID version exists.
 CREATE TABLE IF NOT EXISTS book_barcodes (
   book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
   barcode TEXT NOT NULL,
   PRIMARY KEY (book_id, barcode)
 );
 
--- Repair block: if someone previously created book_barcodes.book_id as UUID, convert it to TEXT + re-add FK.
 DO $$
 BEGIN
   IF EXISTS (
@@ -61,5 +54,3 @@ BEGIN
   END IF;
 END $$;
 
--- (Optional) helpful index if you often look up by barcode
--- CREATE INDEX IF NOT EXISTS book_barcodes_barcode_idx ON book_barcodes (barcode);

@@ -24,7 +24,10 @@ spring:
 spring.main.web-application-type: servlet
 
 management:
-  endpoints.web.exposure.include: health,info,env,configprops
+  endpoints:
+    web:
+      exposure:
+        include: health,info,mappings,env,configprops
   endpoint:
     env:
       show-values: ALWAYS

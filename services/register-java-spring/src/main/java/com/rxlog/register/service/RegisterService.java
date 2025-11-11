@@ -7,8 +7,8 @@ import com.rxlog.register.api.ReadingStatusResponse;
 import com.rxlog.register.domain.Book;
 import com.rxlog.register.repo.BookRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -29,11 +29,10 @@ public class RegisterService {
     private final WebClient web;
 
     /**
-     * Base URL of the barcode service (or the gateway that routes to it).
-     * For local dev via gateway you might want: http://localhost:8080
-     * In your current setup it defaults to the barcodes-go service in Docker.
+     * Call the barcode endpoint via the gateway by default.
+     * You can override with: -Dbarcode.service.base=http://localhost:8085 or in application.yml
      */
-    @Value("${barcode.service.base:http://barcodes-go:8082}")
+    @Value("${barcode.service.base:http://localhost:8080}")
     String barcodeBase;
 
     public RegisterService(BookRepository books) {
@@ -42,7 +41,7 @@ public class RegisterService {
     }
 
     /* =======================================================================
-       NEW: Helpers + Exceptions + API to allocate by dimensions (cm)
+       Helpers + Exceptions + (optional) API to allocate by dimensions (cm)
        ======================================================================= */
 
     // Accepts "10,5", "10.5" or numeric; throws if null/invalid
@@ -53,7 +52,7 @@ public class RegisterService {
         catch (Exception e) { throw new IllegalArgumentException(fieldName + " must be a number, got: " + v); }
     }
 
-    // Exceptions you can map to HTTP 422/409/503 in your controller advice
+    // Exceptions you can map to HTTP 422/409/503 in a controller advice if you expose this function
     public static class NoRuleAppliesException extends RuntimeException {
         public NoRuleAppliesException(String msg) { super(msg); }
     }
@@ -65,43 +64,32 @@ public class RegisterService {
     }
 
     /**
-     * Ask the barcode service to allocate a barcode by dimensions (in centimeters).
-     * Accepts comma decimals (e.g., "10,5") and dot decimals ("10.5").
-     *
-     * Returns the allocated barcode string (e.g., "ogk012").
-     *
-     * Throws:
-     *  - NoRuleAppliesException (422)
-     *  - NoStockAvailableException (409)
-     *  - UpstreamDbUnavailableException (503)
-     *  - RuntimeException for other 5xx or malformed response
+     * OPTIONAL helper: ask the barcode endpoint to allocate using centimeters.
+     * Success → returns {"barcode": "..."} from the barcode service.
      */
     public String assignBarcodeForDimensionsCm(Object widthCm, Object heightCm) {
         BigDecimal w = parseCm(widthCm,  "widthCm");
         BigDecimal h = parseCm(heightCm, "heightCm");
 
         Map<?,?> response = web.post()
-                .uri(barcodeBase + "/api/barcodes/assignForDimensions") // gateway route or direct service
+                .uri(barcodeBase + "/api/barcodes/assignForDimensions")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("widthCm", w, "heightCm", h))
                 .retrieve()
-                // Map well-known statuses to clear exceptions
                 .onStatus(s -> s.value() == 422,
                         r -> r.bodyToMono(String.class).defaultIfEmpty("")
                                 .flatMap(msg -> Mono.error(new NoRuleAppliesException(
-                                        msg.isBlank() ? "No size rule applies for " + w + "×" + h + " cm" : msg))))
+                                        msg.isBlank() ? "No size rule applies for %s×%s cm".formatted(w, h) : msg))))
                 .onStatus(s -> s.value() == 409,
                         r -> r.bodyToMono(String.class).defaultIfEmpty("")
                                 .flatMap(msg -> Mono.error(new NoStockAvailableException(
-                                        msg.isBlank() ? "No stock available for " + w + "×" + h + " cm" : msg))))
+                                        msg.isBlank() ? "No stock available for %s×%s cm".formatted(w, h) : msg))))
                 .onStatus(s -> s.value() == 503,
                         r -> r.bodyToMono(String.class).defaultIfEmpty("")
                                 .flatMap(msg -> Mono.error(new UpstreamDbUnavailableException(
                                         msg.isBlank() ? "Barcode DB unavailable" : msg))))
-                // Let other 5xx bubble as a generic runtime
                 .onStatus(HttpStatusCode::is5xxServerError,
                         r -> r.createException().flatMap(Mono::error))
-                // Success => expect {"barcode":"..."}
                 .bodyToMono(Map.class)
                 .block();
 
@@ -112,24 +100,25 @@ public class RegisterService {
     }
 
     /* =======================================================================
-       Existing flows (unchanged)
+       Register / Update flows
        ======================================================================= */
 
     /**
      * Saves a new book using the barcode already assigned by the barcode service.
-     * No re-checks, no commit.
      * On save failure, the barcode is released back to the pool.
-     * If the initial status is finished/abandoned, release immediately and detach from the book.
+     * If initially finished/abandoned, release immediately and detach from the book.
      */
     @Transactional
     public RegisterBookResponse register(RegisterBookRequest req) {
-        // Basic guard to avoid saving without a barcode (UI should prevent this)
         if (req.barcode() == null || req.barcode().isBlank()) {
             throw new IllegalArgumentException("Barcode is required.");
         }
 
         // Build the entity
         Book b = new Book();
+        // We assign the UUID (entity does not use @GeneratedValue)
+        b.setId(UUID.randomUUID().toString());
+
         b.setAuthor(req.author());
         b.setPublisher(req.publisher());
         b.setPages(req.pages());
@@ -141,14 +130,26 @@ public class RegisterService {
         b.setTitleKeyword3(req.titleKeyword3());
         b.setTitleKeyword3Position(req.titleKeyword3Position());
 
-        // width/height are expected in mm in your current DTO
-        b.setWidthMm(req.width());
-        b.setHeightMm(req.height());
+        // Dimensions in mm, mapped to DB columns 'width' and 'height'
+        b.setWidth(req.width());
+        b.setHeight(req.height());
 
-        b.setBarcodes(List.of(req.barcode()));
+        // Audit timestamps & flags
+        var now = OffsetDateTime.now();
+        b.setRegisteredAt(now);
+        b.setReadingStatusUpdatedAt(now);
+
         b.setReadingStatus(req.readingStatus());
-        b.setTopBook(Boolean.TRUE.equals(req.topBook()));
-        b.setReadingStatusUpdatedAt(OffsetDateTime.now());
+        boolean top = Boolean.TRUE.equals(req.topBook());
+        b.setTopBook(top);
+        if (top) {
+            b.setTopBookSetAt(now);
+        } else {
+            b.setTopBookSetAt(null);
+        }
+
+        // Current barcode list
+        b.setBarcodes(List.of(req.barcode()));
 
         // Save; on failure, release the consumed barcode
         try {
@@ -182,20 +183,34 @@ public class RegisterService {
 
     /**
      * Updates reading status; when moving to finished/abandoned, release and detach the barcode.
+     * Also maintains top_book_set_at when the top flag changes.
      */
     @Transactional
     public ReadingStatusResponse updateReadingStatus(ReadingStatusRequest req) {
-        UUID id = UUID.fromString(req.bookId());
+        String id = req.bookId();
         Book b = books.findById(id).orElseThrow();
+
+        var now = OffsetDateTime.now();
+
+        // Maintain top_book + top_book_set_at when flipping the flag
+        if (req.topBook() != null) {
+            boolean newTop = req.topBook();
+            boolean oldTop = b.isTopBook();
+            b.setTopBook(newTop);
+            if (newTop && !oldTop) {
+                b.setTopBookSetAt(now);
+            } else if (!newTop && oldTop) {
+                b.setTopBookSetAt(null);
+            }
+        }
 
         String status = req.status().toLowerCase(Locale.ROOT);
         if (!List.of("in_progress", "finished", "abandoned").contains(status)) {
             throw new IllegalArgumentException("Invalid status: " + status);
         }
 
-        if (req.topBook() != null) b.setTopBook(req.topBook());
         b.setReadingStatus(status);
-        b.setReadingStatusUpdatedAt(OffsetDateTime.now());
+        b.setReadingStatusUpdatedAt(now);
 
         String released = null;
         boolean done = status.equals("finished") || status.equals("abandoned");

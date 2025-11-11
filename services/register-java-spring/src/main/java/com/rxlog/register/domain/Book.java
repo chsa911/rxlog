@@ -10,13 +10,13 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "books")
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Book {
 
-    @Id @GeneratedValue
-    private UUID id;
+    @Id
+    private String id;
 
-    // Inline basics (string author/publisher), pages
+    // Inline basics
     @Column(nullable = false)
     private String author;
 
@@ -45,16 +45,19 @@ public class Book {
     @Column(name = "title_keyword3_position")
     private Integer titleKeyword3Position;
 
-    // Dimensions in mm
-    @Column(name = "width_mm")
-    private Integer widthMm;
+    /**
+     * Dimensions in millimeters, stored as columns 'width' and 'height'
+     * (no _mm suffix).
+     */
+    @Column(name = "width")
+    private Integer width;
 
-    @Column(name = "height_mm")
-    private Integer heightMm;
+    @Column(name = "height")
+    private Integer height;
 
     // Reading status + flags
     @Column(name = "reading_status")
-    private String readingStatus; // "in_progress" | "finished" | "abandoned"
+    private String readingStatus;  // "in_progress" | "finished" | "abandoned"
 
     @Builder.Default
     @Column(name = "top_book", nullable = false)
@@ -63,10 +66,25 @@ public class Book {
     @Column(name = "reading_status_updated_at")
     private OffsetDateTime readingStatusUpdatedAt;
 
+    /** New audit columns */
+    @Column(name = "registered_at")
+    private OffsetDateTime registeredAt;
+
+    @Column(name = "top_book_set_at")
+    private OffsetDateTime topBookSetAt;
+
     // Barcodes stored as element collection
     @Builder.Default
     @ElementCollection
     @CollectionTable(name = "book_barcodes", joinColumns = @JoinColumn(name = "book_id"))
     @Column(name = "barcode")
     private List<String> barcodes = new ArrayList<>();
+
+    @PrePersist
+    void onCreate() {
+        if (id == null) id = java.util.UUID.randomUUID().toString();
+        if (registeredAt == null) registeredAt = OffsetDateTime.now();
+        if (readingStatusUpdatedAt == null) readingStatusUpdatedAt = registeredAt;
+        if (topBook && topBookSetAt == null) topBookSetAt = registeredAt;
+    }
 }

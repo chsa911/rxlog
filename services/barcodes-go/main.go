@@ -147,7 +147,6 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	// ---------- RELEASE (optional admin/manual: make code available again) ----------
 	releaseHandler := func(w http.ResponseWriter, r *http.Request) {
 		var in codeReq
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil || strings.TrimSpace(in.Code) == "" {
@@ -167,7 +166,6 @@ func main() {
 	http.HandleFunc("/api/barcodes/release", releaseHandler)
 	http.HandleFunc("/barcodes/release", releaseHandler)
 
-	// ---------- VERIFY (optional; checks rule bounds for a given code) ----------
 	http.HandleFunc("/api/barcodes/verify", func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			Code   string `json:"code"`

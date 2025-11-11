@@ -109,13 +109,13 @@ curl -s -X POST http://localhost:8080/api/register/book -H 'content-type: applic
   "barcode":"L0-M3-R1","sizeRuleId":1
 }'
 
-# (Optional) Autocomplete / status / analytics
+# Autocomplete / status / analytics
 # curl -s 'http://localhost:8080/api/autocomplete?field=author&q=tolk'
 # curl -s -X PATCH http://localhost:8080/api/mobile/books/1/status -H 'content-type: application/json' -d '{"status":"finished","lastPage":310}'
 # curl -s 'http://localhost:8080/api/analytics/top-authors?limit=5'
 
-### F) Architecture diagram (Mermaid—renders on GitHub and in recent IntelliJ)
-```markdown
+### F) Architecture diagram 
+
 ## Architecture
 ```mermaid
 flowchart LR
@@ -133,18 +133,15 @@ flowchart LR
   ANA <-->|read| PG
 
 
-> If Mermaid preview doesn’t render in your IntelliJ, update the IDE or install a Mermaid plugin; GitHub will still render it.
 
----
-
-## 3) Organize images & extras (optional but nice)
+## 3) Organize images & extras 
 - Create `docs/` and `docs/images/` for any screenshots.
 - Embed with: `![Screenshot](docs/images/app-home.png)`
 - Add a Postman/Insomnia collection in `docs/` and link it.
 
 ---
 
-## 4) Add a mini Table of Contents (optional)
+## 4) Add a mini Table of Contents
 Place this near the top and update as needed:
 ```markdown
 - [What this is](#what-this-is-plain-english)

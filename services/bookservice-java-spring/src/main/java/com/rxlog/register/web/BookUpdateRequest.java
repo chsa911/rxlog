@@ -10,21 +10,51 @@ public class BookUpdateRequest {
     private Integer height; // mm
     private List<String> barcodes;
 
-    public Integer getPages() { return pages; }
-    public void setPages(Integer pages) { this.pages = pages; }
+    public Integer getPages() {
+        return pages;
+    }
 
-    public String getReadingStatus() { return readingStatus; }
-    public void setReadingStatus(String readingStatus) { this.readingStatus = readingStatus; }
+    public void setPages(Integer pages) {
+        this.pages = pages;
+    }
 
-    public Boolean getTopBook() { return topBook; }
-    public void setTopBook(Boolean topBook) { this.topBook = topBook; }
+    public String getReadingStatus() {
+        return readingStatus;
+    }
 
-    public Integer getWidth() { return width; }
-    public void setWidth(Integer width) { this.width = width; }
+    public void setReadingStatus(String readingStatus) {
+        this.readingStatus = readingStatus;
+    }
 
-    public Integer getHeight() { return height; }
-    public void setHeight(Integer height) { this.height = height; }
+    public Boolean getTopBook() {
+        return topBook;
+    }
 
-    public List<String> getBarcodes() { return barcodes; }
-    public void setBarcodes(List<String> barcodes) { this.barcodes = barcodes; }
+    public void setTopBook(Boolean topBook) {
+        this.topBook = topBook;
+    }
+
+    public Integer getWidth() {
+        return width;
+    }
+
+    public void setWidth(Integer width) {
+        this.width = width;
+    }
+
+    public Integer getHeight() {
+        return height;
+    }
+
+    public void setHeight(Integer height) {
+        this.height = height;
+    }
+
+    public List<String> getBarcodes() {
+        return barcodes;
+    }
+
+    public void setBarcodes(List<String> barcodes) {
+        this.barcodes = barcodes;
+    }
 }

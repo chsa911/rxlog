@@ -14,7 +14,10 @@ public class FlywayRepairConfig {
     public FlywayMigrationStrategy repairThenMigrate() {
         return (Flyway flyway) -> {
             // If history table exists, repair checksums
-            try { flyway.repair(); } catch (Exception ignored) {}
+            try {
+                flyway.repair();
+            } catch (Exception ignored) {
+            }
             flyway.migrate();
         };
     }

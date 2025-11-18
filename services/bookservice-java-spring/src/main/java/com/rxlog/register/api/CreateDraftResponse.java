@@ -9,4 +9,5 @@ public record CreateDraftResponse(
         String draftId,
         Integer width,
         Integer height
-) {}
+) {
+}

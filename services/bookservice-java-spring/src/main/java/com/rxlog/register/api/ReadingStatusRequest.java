@@ -9,4 +9,5 @@ public record ReadingStatusRequest(
         String bookId,
         String status,
         Boolean topBook
-) {}
+) {
+}

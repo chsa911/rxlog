@@ -22,85 +22,6 @@ public class BookDao {
         this.jdbc = jdbc;
     }
 
-    // ------------------------------------------------------------
-    // Suche (für das Admin-UI)
-    // ------------------------------------------------------------
-    public List<BookSearchResult> search(
-            String author,
-            String publisher,
-            String titleLike,
-            String barcode,
-            String readingStatus,
-            Boolean topBook,
-            int limit
-    ) {
-        StringBuilder sql = new StringBuilder("""
-            select
-              b.id,
-              b.author,
-              b.publisher,
-              b.pages,
-              b.reading_status,
-              b.top_book,
-              b.width,
-              b.height,
-              string_agg(distinct bb.barcode, ',') as barcodes_csv
-            from books b
-            left join book_barcodes bb on bb.book_id = b.id
-            """);
-
-        List<Object> args = new ArrayList<>();
-        List<String> where = new ArrayList<>();
-
-        if (StringUtils.hasText(author)) {
-            where.add("b.author ilike ?");
-            args.add("%" + author.trim() + "%");
-        }
-        if (StringUtils.hasText(publisher)) {
-            where.add("b.publisher ilike ?");
-            args.add("%" + publisher.trim() + "%");
-        }
-        if (StringUtils.hasText(titleLike)) {
-            where.add("(b.title_keyword ilike ? or b.title_keyword2 ilike ? or b.title_keyword3 ilike ?)");
-            String pat = "%" + titleLike.trim() + "%";
-            args.add(pat);
-            args.add(pat);
-            args.add(pat);
-        }
-        if (StringUtils.hasText(barcode)) {
-            where.add("""
-                exists (
-                  select 1 from book_barcodes bb2
-                  where bb2.book_id = b.id and bb2.barcode = ?
-                )
-                """);
-            args.add(barcode.trim());
-        }
-        if (StringUtils.hasText(readingStatus)) {
-            where.add("b.reading_status = ?");
-            args.add(readingStatus.trim());
-        }
-        if (topBook != null) {
-            where.add("b.top_book = ?");
-            args.add(topBook);
-        }
-
-        if (!where.isEmpty()) {
-            // note the extra space at the end to separate from "group by"
-            sql.append(" where ").append(String.join(" and ", where)).append(" ");
-        }
-
-// and start the next block without leading newline shenanigans
-        sql.append("""
-group by b.id
-order by b.registered_at desc nulls last, b.id desc
-limit ?
-""");
-        args.add(limit);
-
-        return this.jdbc.query(sql.toString(), args.toArray(), (rs, i) -> mapRow(rs));
-    }
-
     private static BookSearchResult mapRow(ResultSet rs) throws SQLException {
         BookSearchResult r = new BookSearchResult();
         r.setId(rs.getString("id"));
@@ -127,6 +48,85 @@ limit ?
             r.setBarcodes(Collections.emptyList());
         }
         return r;
+    }
+
+    // ------------------------------------------------------------
+    // Suche (für das Admin-UI)
+    // ------------------------------------------------------------
+    public List<BookSearchResult> search(
+            String author,
+            String publisher,
+            String titleLike,
+            String barcode,
+            String readingStatus,
+            Boolean topBook,
+            int limit
+    ) {
+        StringBuilder sql = new StringBuilder("""
+                select
+                  b.id,
+                  b.author,
+                  b.publisher,
+                  b.pages,
+                  b.reading_status,
+                  b.top_book,
+                  b.width,
+                  b.height,
+                  string_agg(distinct bb.barcode, ',') as barcodes_csv
+                from books b
+                left join book_barcodes bb on bb.book_id = b.id
+                """);
+
+        List<Object> args = new ArrayList<>();
+        List<String> where = new ArrayList<>();
+
+        if (StringUtils.hasText(author)) {
+            where.add("b.author ilike ?");
+            args.add("%" + author.trim() + "%");
+        }
+        if (StringUtils.hasText(publisher)) {
+            where.add("b.publisher ilike ?");
+            args.add("%" + publisher.trim() + "%");
+        }
+        if (StringUtils.hasText(titleLike)) {
+            where.add("(b.title_keyword ilike ? or b.title_keyword2 ilike ? or b.title_keyword3 ilike ?)");
+            String pat = "%" + titleLike.trim() + "%";
+            args.add(pat);
+            args.add(pat);
+            args.add(pat);
+        }
+        if (StringUtils.hasText(barcode)) {
+            where.add("""
+                    exists (
+                      select 1 from book_barcodes bb2
+                      where bb2.book_id = b.id and bb2.barcode = ?
+                    )
+                    """);
+            args.add(barcode.trim());
+        }
+        if (StringUtils.hasText(readingStatus)) {
+            where.add("b.reading_status = ?");
+            args.add(readingStatus.trim());
+        }
+        if (topBook != null) {
+            where.add("b.top_book = ?");
+            args.add(topBook);
+        }
+
+        if (!where.isEmpty()) {
+            // note the extra space at the end to separate from "group by"
+            sql.append(" where ").append(String.join(" and ", where)).append(" ");
+        }
+
+// and start the next block without leading newline shenanigans
+        sql.append("""
+                group by b.id
+                order by b.registered_at desc nulls last, b.id desc
+                limit ?
+                """);
+        args.add(limit);
+
+        return this.jdbc.query(sql.toString(), args.toArray(), (rs, i) -> mapRow(rs));
     }
 
     // ------------------------------------------------------------
@@ -222,35 +222,35 @@ limit ?
         boolean top = req.topBook() != null && req.topBook();
 
         String sql = """
-            insert into books (
-                author,
-                publisher,
-                pages,
-                title_keyword,
-                title_keyword_position,
-                title_keyword2,
-                title_keyword2_position,
-                title_keyword3,
-                title_keyword3_position,
-                width,
-                height,
-                reading_status,
-                top_book,
-                registered_at,
-                reading_status_updated_at
-            )
-            values (
-                ?, ?, ?,
-                ?, ?,
-                ?, ?,
-                ?, ?,
-                ?, ?,
-                ?, ?,
-                now(),
-                now()
-            )
-            returning id::text
-            """;
+                insert into books (
+                    author,
+                    publisher,
+                    pages,
+                    title_keyword,
+                    title_keyword_position,
+                    title_keyword2,
+                    title_keyword2_position,
+                    title_keyword3,
+                    title_keyword3_position,
+                    width,
+                    height,
+                    reading_status,
+                    top_book,
+                    registered_at,
+                    reading_status_updated_at
+                )
+                values (
+                    ?, ?, ?,
+                    ?, ?,
+                    ?, ?,
+                    ?, ?,
+                    ?, ?,
+                    ?, ?,
+                    now(),
+                    now()
+                )
+                returning id::text
+                """;
 
         String id = jdbc.queryForObject(sql, new Object[]{
                 req.author(),

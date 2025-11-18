@@ -5,4 +5,5 @@ public record ReadingStatusResponse(
         String status,
         boolean topBook,
         String releasedBarcode
-) {}
+) {
+}

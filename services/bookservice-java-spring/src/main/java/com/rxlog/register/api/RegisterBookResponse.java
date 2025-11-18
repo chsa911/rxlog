@@ -8,4 +8,5 @@ public record RegisterBookResponse(
         String bookId,
         String barcode,
         String readingStatus
-) {}
+) {
+}

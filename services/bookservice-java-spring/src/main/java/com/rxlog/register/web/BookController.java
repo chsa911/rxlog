@@ -50,7 +50,7 @@ public class BookController {
             if (!Set.of("in_progress", "finished", "abandoned").contains(v)) {
                 return ResponseEntity.badRequest().body(
                         java.util.Map.of("error", "invalid_reading_status",
-                                "allowed", new String[]{"in_progress","finished","abandoned"})
+                                "allowed", new String[]{"in_progress", "finished", "abandoned"})
                 );
             }
             req.setReadingStatus(v);

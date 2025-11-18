@@ -16,9 +16,9 @@ public record RegisterBookRequest(
         // Titel-Keywords + Positionen
         @NotBlank String titleKeyword,
         @NotNull @Min(1) Integer titleKeywordPosition,
-        String  titleKeyword2,
+        String titleKeyword2,
         Integer titleKeyword2Position,
-        String  titleKeyword3,
+        String titleKeyword3,
         Integer titleKeyword3Position,
 
         @NotNull Integer width,
@@ -30,4 +30,5 @@ public record RegisterBookRequest(
 
         // zugewiesener Barcode (z.B. "ogk001")
         @NotBlank String barcode
-) {}
+) {
+}

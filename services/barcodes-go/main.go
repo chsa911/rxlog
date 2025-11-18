@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,15 +27,51 @@ func jsonOK(w http.ResponseWriter, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// e=down, l=left, o=up
-func positionFromHeight(h int) string {
-	if h <= 200 {
-		return "down" // egk
+func loadExistingBarcodes(ctx context.Context, pool *pgxpool.Pool) ([]string, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT barcode
+		  FROM book_barcodes
+		 WHERE barcode IS NOT NULL AND barcode <> ''
+	`)
+	if err != nil {
+		return nil, err
 	}
-	if h <= 260 {
-		return "left" // lgk
+	defer rows.Close()
+
+	var out []string
+	for rows.Next() {
+		var b string
+		if err := rows.Scan(&b); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
 	}
-	return "up" // ogk
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func barcodeExists(ctx context.Context, pool *pgxpool.Pool, code string) (bool, error) {
+	code = strings.ToLower(strings.TrimSpace(code))
+	if code == "" {
+		return false, nil
+	}
+
+	var dummy int
+	err := pool.QueryRow(ctx, `
+		SELECT 1
+		  FROM book_barcodes
+		 WHERE lower(barcode) = $1
+		 LIMIT 1
+	`, code).Scan(&dummy)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func main() {
@@ -46,17 +84,45 @@ func main() {
 		log.Fatal("DATABASE_URL required (e.g. postgresql://rxlog:rxlog@postgres:5432/rxlog?sslmode=disable)")
 	}
 
+	rulesFile := os.Getenv("SIZERULES_FILE")
+	if rulesFile == "" {
+		rulesFile = "sizerules.csv"
+	}
+	rankingFile := os.Getenv("BARCODE_RANKING_FILE")
+	if rankingFile == "" {
+		rankingFile = "barcode-ranking.txt"
+	}
+
 	ctx := context.Background()
+
 	pool, err := pgxpool.New(ctx, dburl)
 	if err != nil {
 		log.Fatalf("db connect: %v", err)
 	}
 	defer pool.Close()
 
-	// --- health ---
-	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
+	rules, err := loadSizeRulesCSV(rulesFile)
+	if err != nil {
+		log.Fatalf("load size rules: %v", err)
+	}
+	ranking, err := loadRanking(rankingFile)
+	if err != nil {
+		log.Fatalf("load ranking: %v", err)
+	}
 
-	// ---------- ASSIGN (atomic pick + mark unavailable; single source of truth) ----------
+	alreadyUsed, err := loadExistingBarcodes(ctx, pool)
+	if err != nil {
+		log.Printf("warning: could not load existing barcodes: %v", err)
+		alreadyUsed = nil
+	}
+	log.Printf("seeded %d existing barcodes from book_barcodes", len(alreadyUsed))
+
+	barcodeSystem := NewBarcodeSystem(rules, ranking, alreadyUsed)
+
+	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	})
+
 	assignHandler := func(w http.ResponseWriter, r *http.Request) {
 		var in nextReq
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.Width <= 0 || in.Height <= 0 {
@@ -64,82 +130,47 @@ func main() {
 			return
 		}
 
-		// 1) find matching size rule (inclusive bounds)
-		var rid int
-		var color, pDown, pLeft, pUp *string
-		err := pool.QueryRow(ctx, `
-			SELECT id, COALESCE(color,''), prefix_down, prefix_left, prefix_up
-			  FROM size_rules
-			 WHERE $1 >= COALESCE(min_width,0)  AND $1 <= COALESCE(max_width,2147483647)
-			   AND $2 >= COALESCE(min_height,0) AND $2 <= COALESCE(max_height,2147483647)
-			 ORDER BY (COALESCE(max_width,2147483647)-min_width) ASC, min_width DESC
-			 LIMIT 1
-		`, in.Width, in.Height).Scan(&rid, &color, &pDown, &pLeft, &pUp)
-		if err != nil {
-			http.Error(w, "no size rule for width/height", http.StatusNotFound)
+		for {
+			code, rule, pos, err := barcodeSystem.NextBarcodeCandidate(in.Width, in.Height)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+
+			exists, err := barcodeExists(r.Context(), pool, code)
+			if err != nil {
+				http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if exists {
+				barcodeSystem.MarkUsed(code)
+				continue
+			}
+
+			barcodeSystem.MarkUsed(code)
+
+			prefix := ""
+			if len(code) > 3 {
+				prefix = code[:len(code)-3]
+			}
+
+			jsonOK(w, map[string]any{
+				"code":        code,
+				"isAvailable": false,
+				"position":    pos,
+				"sizeGroup":   rule.SizeGroup,
+				"prefix":      prefix,
+				"color":       rule.Color,
+				"widthCm":     float64(in.Width) / 10.0,
+				"heightCm":    float64(in.Height) / 10.0,
+			})
 			return
 		}
-
-		// 2) choose prefix by position (down|left|up)
-		pos := positionFromHeight(in.Height)
-		var pfx string
-		switch pos {
-		case "down":
-			if pDown != nil {
-				pfx = *pDown
-			}
-		case "left":
-			if pLeft != nil {
-				pfx = *pLeft
-			}
-		case "up":
-			if pUp != nil {
-				pfx = *pUp
-			}
-		}
-		if strings.TrimSpace(pfx) == "" {
-			http.Error(w, "rule has no prefix for position", http.StatusBadRequest)
-			return
-		}
-
-		// 3) atomically assign the next AVAILABLE code (flip to FALSE in the same statement)
-		var code string
-		err = pool.QueryRow(ctx, `
-			WITH picked AS (
-				SELECT code
-				  FROM barcodes
-				 WHERE is_available = TRUE
-				   AND size_rule_id  = $1
-				   AND lower(code) LIKE $2   -- prefix%
-				 ORDER BY code ASC
-				 FOR UPDATE SKIP LOCKED
-				 LIMIT 1
-			)
-			UPDATE barcodes b
-			   SET is_available = FALSE, updated_at = now()
-			  FROM picked
-			 WHERE b.code = picked.code
-			RETURNING b.code
-		`, rid, strings.ToLower(pfx)+"%").Scan(&code)
-		if err != nil {
-			http.Error(w, "no available barcode", http.StatusNotFound)
-			return
-		}
-
-		jsonOK(w, map[string]any{
-			"code":        code,
-			"isAvailable": false, // already consumed
-			"position":    pos,   // "down" | "left" | "up"
-			"sizeRuleId":  rid,
-			"prefix":      pfx,
-			"color":       func() string { if color != nil { return *color }; return "" }(),
-		})
 	}
-	// register both (gateway may StripPrefix=1)
+
 	http.HandleFunc("/api/barcodes/assignForDimensions", assignHandler)
 	http.HandleFunc("/barcodes/assignForDimensions", assignHandler)
 
-	// ---------- COMMIT (deprecated; no-op for compatibility) ----------
 	http.HandleFunc("/api/barcodes/commit", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -153,16 +184,10 @@ func main() {
 			http.Error(w, "bad json", http.StatusBadRequest)
 			return
 		}
-		if _, err := pool.Exec(ctx, `
-			UPDATE barcodes
-			   SET is_available = TRUE, updated_at = now()
-			 WHERE code = $1
-		`, in.Code); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		barcodeSystem.Release(in.Code)
 		jsonOK(w, map[string]any{"code": in.Code, "isAvailable": true})
 	}
+
 	http.HandleFunc("/api/barcodes/release", releaseHandler)
 	http.HandleFunc("/barcodes/release", releaseHandler)
 
@@ -176,28 +201,70 @@ func main() {
 			http.Error(w, "bad json", http.StatusBadRequest)
 			return
 		}
-		var minW, maxW, minH, maxH int
-		err := pool.QueryRow(ctx, `
-			SELECT COALESCE(sr.min_width,0),
-			       COALESCE(sr.max_width,2147483647),
-			       COALESCE(sr.min_height,0),
-			       COALESCE(sr.max_height,2147483647)
-			  FROM barcodes b
-			  JOIN size_rules sr ON sr.id = b.size_rule_id
-			 WHERE b.code = $1
-			 LIMIT 1
-		`, in.Code).Scan(&minW, &maxW, &minH, &maxH)
+		if in.Width <= 0 || in.Height <= 0 {
+			http.Error(w, "width and height must be greater than zero", http.StatusBadRequest)
+			return
+		}
+
+		code := strings.TrimSpace(in.Code)
+		wCm := float64(in.Width) / 10.0
+		hCm := float64(in.Height) / 10.0
+
+		rule, err := pickRule(barcodeSystem.rules, wCm)
 		if err != nil {
 			http.Error(w, "size rule not found", http.StatusNotFound)
 			return
 		}
-		ok := in.Width >= minW && in.Width <= maxW && in.Height >= minH && in.Height <= maxH
+
+		expectedPrefix, pos := choosePrefixAndPosition(rule, hCm)
+
+		if len(code) < 4 {
+			jsonOK(w, map[string]any{
+				"ok":     false,
+				"reason": "code too short",
+			})
+			return
+		}
+		actualPrefix := strings.ToLower(code[:len(code)-3])
+		suffix := code[len(code)-3:]
+
+		ok := true
+		reason := ""
+
+		if actualPrefix != strings.ToLower(expectedPrefix) {
+			ok = false
+			reason = "prefix does not match expected size rule and position"
+		} else {
+			if len(suffix) != 3 {
+				ok = false
+				reason = "suffix must be three digits"
+			} else {
+				for _, ch := range suffix {
+					if ch < '0' || ch > '9' {
+						ok = false
+						reason = "suffix must contain only digits"
+						break
+					}
+				}
+				if ok {
+					if _, exists := barcodeSystem.rankIndex[suffix]; !exists {
+						ok = false
+						reason = "suffix not in ranking list"
+					}
+				}
+			}
+		}
+
 		jsonOK(w, map[string]any{
-			"ok":        ok,
-			"minWidth":  minW,
-			"maxWidth":  maxW,
-			"minHeight": minH,
-			"maxHeight": maxH,
+			"ok":             ok,
+			"reason":         reason,
+			"expectedPrefix": expectedPrefix,
+			"actualPrefix":   actualPrefix,
+			"position":       pos,
+			"sizeGroup":      rule.SizeGroup,
+			"color":          rule.Color,
+			"widthCm":        wCm,
+			"heightCm":       hCm,
 		})
 	})
 

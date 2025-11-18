@@ -8,18 +8,13 @@ spring:
     gateway:
       routes:
         - id: register
-          uri: ${REGISTER_URL:http://localhost:8081}
+          uri: ${REGISTER_URL:http://localhost:8086}   # <- register service
           predicates:
             - Path=/api/register/**
-        #  filters:
-         #   - StripPrefix=1
-
         - id: barcodes
-          uri: ${BARCODES_URL:http://localhost:8081}
+          uri: ${BARCODES_URL:http://localhost:8087}   # <- barcodes service (adjust if different)
           predicates:
             - Path=/api/barcodes/**
-         # filters:
-         #   - StripPrefix=0
 
 management:
   endpoints:

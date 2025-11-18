@@ -1,7 +1,4 @@
 // frontend-react/src/lib/dimensions.js
-// Parse a free-form dimension string to millimeters (integer) and centimeters (number).
-// Supports "105", "105mm", "10,5", "10.5", "10,5 cm", "19", etc.
-// Heuristic: no suffix → if value ≤ 40 treat as cm, else mm.
 export function parseDimension(raw) {
   if (raw == null) return { mm: null, cm: null, unit: null };
   let s = String(raw).trim().toLowerCase();

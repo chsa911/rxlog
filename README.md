@@ -22,7 +22,7 @@ What the app does
 
 Generate & reserve codes automatically, including suggested color and edge placement.
 
-Register the book (author, publisher, pages) and store it with the code.
+Register the book (author, titleKeyword, publisher, pages) and store it with the code.
 
 Research the first‑published year automatically.
 
@@ -33,7 +33,7 @@ Mobile: look up books on the go and update reading status (reading → finished/
 Analytics: see your most‑read authors.
 
  At a glance
- ervices
+ Services
 
 Gateway (Java – Spring Boot)
 
@@ -41,9 +41,9 @@ Register (Java + Flyway)
 
 Barcode (Go + pgx + Redis)
 
-Mobile (Kotlin)
+Mobile (Kotlin) 
 
-Autocomplete (Go + Redis)
+Autocomplete (Go + Redis) 
 
 Analytics (Go + pgx + Redis)
 
@@ -138,18 +138,4 @@ flowchart LR
 - Create `docs/` and `docs/images/` for any screenshots.
 - Embed with: `![Screenshot](docs/images/app-home.png)`
 - Add a Postman/Insomnia collection in `docs/` and link it.
-
----
-
-## 4) Add a mini Table of Contents
-Place this near the top and update as needed:
-```markdown
-- [What this is](#what-this-is-plain-english)
-- [How the barcode works](#how-the-barcode-works)
-- [What the app does](#what-the-app-does)
-- [Quick start](#quick-start)
-- [Sample API](#sample-api)
-- [Feature status](#feature-status)
-- [3-minute demo](#3-minute-demo)
-- [Architecture](#architecture)
 

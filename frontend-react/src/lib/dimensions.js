@@ -37,7 +37,6 @@ export function parseDimension(raw) {
   }
 }
 
-
 export function parseDimensionToMM(raw) {
   return parseDimension(raw).mm;
 }

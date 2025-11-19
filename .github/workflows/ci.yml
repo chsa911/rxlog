@@ -12,16 +12,13 @@ jobs:
       - name: Build Gateway
         working-directory: gateway-java-spring
         run: ./gradlew bootJar -x test || true
-      - name: Build Register
-        working-directory: services/register-java-spring
-        run: ./gradlew bootJar -x test || true
-      - name: Build Mobile
-        working-directory: services/mobile-kotlin-spring
+      - name: Build Bookservice
+        working-directory: services/bookservice-java-spring
         run: ./gradlew bootJar -x test || true
       - uses: actions/setup-go@v5
         with: { go-version: '1.22' }
       - name: Build Go services
         run: |
-          for svc in services/barcodes-go services/autocomplete-go services/analytics-go services/research-go; do
+          for svc in services/barcodes-go do
             (cd $svc && go build ./...)
           done

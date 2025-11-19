@@ -232,4 +232,6 @@ flowchart LR
   AUT <-->|cache| RD
   ANA <-->|read| PG
 ```
+All source code comments and identifiers are in English.
+User-facing messages may be in German.
 

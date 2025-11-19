@@ -51,7 +51,7 @@ public class BookDao {
     }
 
     // ------------------------------------------------------------
-    // Suche (für das Admin-UI)
+    // Search (for the Admin-UI)
     // ------------------------------------------------------------
     public List<BookSearchResult> search(
             String author,
@@ -114,11 +114,10 @@ public class BookDao {
         }
 
         if (!where.isEmpty()) {
-            // note the extra space at the end to separate from "group by"
+
             sql.append(" where ").append(String.join(" and ", where)).append(" ");
         }
 
-// and start the next block without leading newline shenanigans
         sql.append("""
                 group by b.id
                 order by b.registered_at desc nulls last, b.id desc
@@ -211,11 +210,11 @@ public class BookDao {
     }
 
     // ------------------------------------------------------------
-    // Insert für die Registrierung
+    // Insert for Registration
     // ------------------------------------------------------------
 
     /**
-     * Legt ein neues Buch + seine Barcodes an und gibt die generierte ID zurück.
+     * Creates a new book + its barcode and returns the generated ID
      */
     @Transactional
     public String insert(RegisterBookRequest req) {

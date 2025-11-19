@@ -13,7 +13,7 @@ public class FlywayRepairConfig {
     @Bean
     public FlywayMigrationStrategy repairThenMigrate() {
         return (Flyway flyway) -> {
-            // If history table exists, repair checksums
+
             try {
                 flyway.repair();
             } catch (Exception ignored) {

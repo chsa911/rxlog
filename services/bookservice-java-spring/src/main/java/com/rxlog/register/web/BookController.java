@@ -6,7 +6,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Set;
-
+/**
+ * REST API for registering and updating books.
+ */
 @RestController
 @RequestMapping("/api/register")
 public class BookController {

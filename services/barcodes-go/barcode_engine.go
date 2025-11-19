@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"strings"
 )
-
+// SizeRule represents one row in sizerules.csv.
+// WidthMinCm / WidthMaxCm define the size band;
+// SpecialHeightsCm contains heights that get a dedicated prefix/position.
 type SizeRule struct {
 	SizeGroup      int
 	WidthMinCm     float64
@@ -184,6 +186,12 @@ func choosePrefixAndPosition(rule *SizeRule, heightCm float64) (prefix string, p
 	return rule.HighPrefix, "up"
 }
 
+// NextBarcodeCandidate picks the next free barcode for a given width/height
+// based on the loaded size rules and current usage.
+// Returns code, matching rule, position ("top"/"bottom"/"left"), or an error
+// if no code or rule applies.
+// isSpecialHeight checks if hCm matches one of the "special" heights
+// (e.g. to force a specific edge placement).
 func (bs *BarcodeSystem) NextBarcodeCandidate(widthMm, heightMm int) (code string, rule *SizeRule, position string, err error) {
 	if widthMm <= 0 || heightMm <= 0 {
 		return "", nil, "", fmt.Errorf("width and height must be greater than zero")

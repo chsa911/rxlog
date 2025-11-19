@@ -5,15 +5,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * Request-Payload für das finale Registrieren eines Buchs.
+ * Request-Payload for the finale registration of a book.
  */
 public record RegisterBookRequest(
-        // Basisdaten
+        // basic data
         @NotBlank String author,
         @NotBlank String publisher,
         @NotNull @Min(1) Integer pages,
 
-        // Titel-Keywords + Positionen
+        // title-keywords + positions
         @NotBlank String titleKeyword,
         @NotNull @Min(1) Integer titleKeywordPosition,
         String titleKeyword2,
@@ -24,11 +24,11 @@ public record RegisterBookRequest(
         @NotNull Integer width,
         @NotNull Integer height,
 
-        // Lese-Status
+        // reading-status
         @NotBlank String readingStatus,   // "in_progress" | "finished" | "abandoned"
         Boolean topBook,
 
-        // zugewiesener Barcode (z.B. "ogk001")
+        // provided barcode (e.g. "ogk001")
         @NotBlank String barcode
 ) {
 }

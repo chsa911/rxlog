@@ -9,9 +9,7 @@ import com.rxlog.register.web.BookDao;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Fachlogik für das Registrieren von Büchern.
- */
+/** Application service for registering books. */
 @Service
 public class RegisterBookService {
 
@@ -22,25 +20,24 @@ public class RegisterBookService {
     }
 
     /**
-     * Erzeugt einen „Draft“ (Entwurf) für ein neues Buch.
-     * In dieser Demo speichern wir den Draft nicht, sondern geben nur die Maße zurück.
+     * Produces a „draft“ for a new book.
+     * In this demo we don't save the draft but just returnsback width and height.
      */
     public CreateDraftResponse createDraft(CreateDraftRequest req) {
         return new CreateDraftResponse(
-                null,          // kein persistierter Draft in der Demo
+                null,          // no persisted draft in demo
                 req.width(),
                 req.height()
         );
     }
 
     /**
-     * Schreibt ein neues Buch in die Datenbank und gibt die zugehörige bookId + Barcode + Status zurück.
+     * Writes a book to db and returns the bookId + barcode + status.
      */
     @Transactional
     public RegisterBookResponse registerBook(RegisterBookRequest req) {
         String bookId = bookDao.insert(req);
 
-        // Debug‐Ausgabe hilft, wenn später noch etwas hakt
         System.out.println(">>> registerBook: id=" + bookId + ", barcode=" + req.barcode());
 
         return new RegisterBookResponse(
